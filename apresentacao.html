@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Armazém automatizado com robôs</title>
+<style>
+:root{color-scheme:light;--paper:#f5f1e8;--ink:#182c38;--green:#126b5f;--line:#ccd4cd}
+*{box-sizing:border-box}
+body{margin:0;background:#182c38;color:var(--ink);font-family:system-ui,"Segoe UI",sans-serif}
+main{max-width:1440px;margin:auto}
+.slide{min-height:100vh;background:var(--paper);padding:6vh 7vw 8vh;display:none}
+.slide.active{display:flex;flex-direction:column;justify-content:center}
+.kicker{color:var(--green);text-transform:uppercase;font-size:clamp(.8rem,1.4vw,1.2rem);letter-spacing:.08em;font-weight:700}
+h1{font-size:clamp(2.8rem,6.4vw,6.8rem);line-height:1.03;max-width:1000px;margin:.3em 0}
+h2{font-size:clamp(2rem,4.4vw,4.3rem);line-height:1.08;margin:.25em 0 .65em}
+p,li,td,th{font-size:clamp(1.05rem,1.8vw,1.7rem);line-height:1.5}
+p{max-width:1050px}
+ul,ol{padding-left:1.4em;margin:.2em 0}
+li{padding:.25em 0}
+.lead{font-size:clamp(1.35rem,2.4vw,2.2rem)}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:3vw}
+.box{border-top:3px solid var(--green);padding-top:1.1em}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:.55em .6em;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--green)}
+code{font-family:Consolas,monospace;font-size:.9em;background:#e4e9e1;padding:.1em .25em}
+nav{position:fixed;bottom:12px;right:16px;display:flex;gap:10px;align-items:center;padding:8px 12px;background:#182c38;color:#fff;border-radius:6px}
+button{border:1px solid #647a84;color:#fff;background:#263f4e;font:inherit;padding:8px 15px;cursor:pointer}
+button:focus-visible{outline:3px solid #efbf55}
+.foot{margin-top:2em;font-size:clamp(.85rem,1.25vw,1.1rem);color:#53646b}
+@media(max-width:700px){.columns{grid-template-columns:1fr}.slide{padding:5vh 6vw 100px}td,th{font-size:1rem}}
+@media print{
+@page{size:landscape;margin:0}
+body{background:white}
+.slide,.slide.active{display:flex;page-break-after:always;break-after:page;min-height:100vh;height:100vh;padding:30px 55px;justify-content:center}
+.slide:last-child{page-break-after:auto;break-after:auto}
+h1{font-size:54pt}h2{font-size:34pt}p,li,td,th{font-size:17pt}
+.kicker,.foot{font-size:11pt}nav{display:none}
+}
+</style>
+</head>
+<body>
+<main>
+<section class="slide active">
+<div class="kicker">UEA • Programação concorrente e IPC</div>
+<h1>Armazém automatizado<br>com robôs</h1>
+<p class="lead">Coordenar pedidos, corredores e recarga com processos e threads POSIX.</p>
+<p class="foot">Avaliação Parcial 2 • Prof. Fabio de Sousa Cardoso</p>
+</section>
+<section class="slide">
+<div class="kicker">Arquitetura</div>
+<h2>Um processo por robô</h2>
+<div class="columns">
+<div class="box"><p><strong>Supervisor</strong></p><ul><li>Cria e acompanha os filhos.</li><li>Gera pedidos e recebe comandos.</li><li>Grava eventos e atualiza o painel.</li></ul></div>
+<div class="box"><p><strong>Até quatro robôs</strong></p><ul><li>Fluxo principal executa os pedidos.</li><li>Thread de telemetria amostra bateria e estado.</li><li>Mapa e reservas são compartilhados.</li></ul></div>
+</div>
+<p class="foot">Todos os forks ocorrem antes de criar threads no supervisor.</p>
+</section>
+<section class="slide">
+<div class="kicker">Comunicação e sincronização</div>
+<h2>Cada mecanismo tem uma função</h2>
+<table><thead><tr><th>Mecanismo</th><th>Uso no sistema</th></tr></thead><tbody>
+<tr><td>Fila POSIX</td><td>Pedidos limitados e priorizados</td></tr>
+<tr><td>Memória compartilhada e mutex</td><td>Mapa, posições e atualização consistente</td></tr>
+<tr><td>Variáveis de condição</td><td>Espera por rotas e buffer de eventos</td></tr>
+<tr><td>Semáforo de capacidade um</td><td>Conector de recarga compartilhado</td></tr>
+<tr><td>FIFO e sinais</td><td>Comandos externos e encerramento</td></tr>
+</tbody></table>
+</section>
+<section class="slide">
+<div class="kicker">Coordenação dos trajetos</div>
+<h2>Reservar o conjunto antes de partir</h2>
+<ol><li>BFS calcula o trajeto até a coleta.</li><li>O monitor verifica todos os pontos sob um mutex.</li><li>O robô aguarda sem manter reservas parciais.</li><li>Ao voltar à doca, libera a rota e acorda os interessados.</li></ol>
+<p><strong>Tickets</strong> organizam a admissão. Trajetos independentes podem executar concorrentemente.</p>
+<p class="foot">A reserva integral elimina a espera circular entre reservas de trajeto, com custo no aproveitamento dos corredores.</p>
+</section>
+<section class="slide">
+<div class="kicker">Demonstração</div>
+<h2>Observar a concorrência no terminal</h2>
+<div class="columns">
+<div class="box"><ol><li>Iniciar <code>make demo</code>.</li><li>Enviar pedidos pela FIFO.</li><li>Acompanhar PIDs, reservas e carregador.</li></ol></div>
+<div class="box"><ul><li>Urgência atua sobre mensagens pendentes.</li><li>Corredor ocupado produz espera por condição.</li><li>Ctrl+C solicita a parada coordenada.</li></ul></div>
+</div>
+<p class="foot">O CSV e o resumo JSON ficam em uma pasta exclusiva da execução.</p>
+</section>
+<section class="slide">
+<div class="kicker">Validação</div>
+<h2>Verificar os efeitos da sincronização</h2>
+<div class="columns">
+<div class="box"><p><strong>Verificações com <code>make test</code></strong></p><ul><li>Entregas e ausência de duplicatas</li><li>Movimentos e posições distintas</li><li>Prioridade e bateria</li><li>Interrupção, falha de filho e duas instâncias</li></ul></div>
+<div class="box"><p><strong>Escolhas desta versão</strong></p><ul><li>Movimentação em mapa discreto</li><li>Reserva integral do trajeto</li><li>Parada coordenada diante de falha</li></ul></div>
+</div>
+<p class="foot">Os resultados apresentados devem vir da execução realizada no ensaio e na demonstração.</p>
+</section>
+</main>
+<nav aria-label="Navegação dos slides">
+<button type="button" id="anterior" aria-label="Slide anterior">←</button>
+<span id="pagina" aria-live="polite">1 / 6</span>
+<button type="button" id="proximo" aria-label="Próximo slide">→</button>
+</nav>
+<script>
+const slides=Array.from(document.querySelectorAll('.slide'));
+let atual=0;
+function mostrar(indice){
+ atual=Math.max(0,Math.min(slides.length-1,indice));
+ slides.forEach((slide,i)=>{slide.classList.toggle('active',i===atual);slide.setAttribute('aria-hidden',i===atual?'false':'true');});
+ document.getElementById('pagina').textContent=(atual+1)+' / '+slides.length;
+}
+document.getElementById('anterior').addEventListener('click',()=>mostrar(atual-1));
+document.getElementById('proximo').addEventListener('click',()=>mostrar(atual+1));
+document.addEventListener('keydown',e=>{
+ if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();mostrar(atual+1);}
+ if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();mostrar(atual-1);}
+ if(e.key==='Home')mostrar(0);
+ if(e.key==='End')mostrar(slides.length-1);
+});
+mostrar(0);
+</script>
+</body>
+</html>
